@@ -55,10 +55,62 @@ int encoder0Pos = 0;
 
 DHT_Unified dht(DHTPIN, DHTTYPE);
 
+IPAddress local_IP(192, 168, 1, 128); // Set your Static IP address
+IPAddress gateway(192, 168, 1, 1);    // Set your Gateway IP address
+IPAddress subnet(255, 255, 0, 0);
+IPAddress primaryDNS(8, 8, 8, 8);   // optional
+IPAddress secondaryDNS(8, 8, 4, 4); // optional
+
 AsyncWebServer server(8015);
+AsyncWebSocket ws("/ws");
 
 const char *ssid = "WIFI_JIT";
 const char *password = "1234zxcv";
+
+//------------------------------------ socket --------------------------------------
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
+{
+    AwsFrameInfo *info = (AwsFrameInfo *)arg;
+    if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
+    {
+        data[len] = 0;
+        if (strcmp((char *)data, "toggle") == 0)
+        {
+            // notifyClients(1);
+        }
+    }
+}
+
+void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
+             void *arg, uint8_t *data, size_t len)
+{
+    switch (type)
+    {
+    case WS_EVT_CONNECT:
+        Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+        break;
+    case WS_EVT_DISCONNECT:
+        Serial.printf("WebSocket client #%u disconnected\n", client->id());
+        break;
+    case WS_EVT_DATA:
+        handleWebSocketMessage(arg, data, len);
+        break;
+    case WS_EVT_PONG:
+    case WS_EVT_ERROR:
+        break;
+    }
+}
+
+void initWebSocket()
+{
+    ws.onEvent(onEvent);
+    server.addHandler(&ws);
+}
+
+void notifyClients(int value)
+{
+    ws.textAll("{\"encoder\":" + String(value) + "}");
+}
 
 //------------------------------------ DHT ---------------------------------------
 String getTemHum()
@@ -118,6 +170,7 @@ int read_encoder()
             encoder0Pos += 1;
         }
         encoder0Pos = encoder0Pos < 0 ? 0 : (encoder0Pos > 255 ? 255 : encoder0Pos);
+        notifyClients(encoder0Pos);
         Serial.println("encoder: " + String(encoder0Pos));
     }
     encoder0PinALast = n;
@@ -143,6 +196,7 @@ void notFound(AsyncWebServerRequest *request)
 {
     request->send(404, "text/plain", "Not found");
 }
+
 //-------------------------------------- main --------------------------------------
 void setup()
 {
@@ -215,6 +269,10 @@ void setup()
     Serial.println(F("%"));
     Serial.println(F("------------------------------------"));
     // wifi
+    if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS))
+    {
+        Serial.println("STA Failed to configure");
+    }
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
     if (WiFi.waitForConnectResult() != WL_CONNECTED)
@@ -224,6 +282,8 @@ void setup()
     }
     Serial.print("IP Address: ");
     Serial.println(WiFi.localIP());
+    //------------------------------- socket -------------------------
+    initWebSocket();
     //---------------------------wifi events---------------------------
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
               { 
