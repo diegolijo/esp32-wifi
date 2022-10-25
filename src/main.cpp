@@ -1,30 +1,10 @@
-//
-// A simple server implementation with regex routes:
-//  * serve static messages
-//  * read GET and POST parameters
-//  * handle missing pages / 404s
-//
-// Add buildflag ASYNCWEBSERVER_REGEX to enable the regex support
-// For platformio: platformio.ini:
-//  build_flags =
-//      -DASYNCWEBSERVER_REGEX
-// For arduino IDE: create/update platform.local.txt
-// Windows: C:\Users\(username)\AppData\Local\Arduino15\packages\espxxxx\hardware\espxxxx\{version}\platform.local.txt
-// Linux: ~/.arduino15/packages/espxxxx/hardware/espxxxx/{version}/platform.local.txt
-//
-// compiler.cpp.extra_flags=-DASYNCWEBSERVER_REGEX=1
 
 #include <Arduino.h>
 #include <Adafruit_Sensor.h>
 #include <DHT.h>
 #include <DHT_U.h>
-/* #ifdef ESP32 */
 #include <WiFi.h>
 #include <AsyncTCP.h>
-/* #elif defined(ESP8266)
-#include <ESP8266WiFi.h>
-#include <ESPAsyncTCP.h>
-#endif */
 #include <ESPAsyncWebServer.h>
 
 #define DHTVCC 19
@@ -55,17 +35,22 @@ int encoder0Pos = 0;
 
 DHT_Unified dht(DHTPIN, DHTTYPE);
 
+// wifi
 IPAddress local_IP(192, 168, 1, 128); // Set your Static IP address
 IPAddress gateway(192, 168, 1, 1);    // Set your Gateway IP address
 IPAddress subnet(255, 255, 0, 0);
 IPAddress primaryDNS(8, 8, 8, 8);   // optional
 IPAddress secondaryDNS(8, 8, 4, 4); // optional
 
-AsyncWebServer server(8015);
 AsyncWebSocket ws("/ws");
-
+// station
+AsyncWebServer server(8015);
 const char *ssid = "WIFI_JIT";
 const char *password = "1234zxcv";
+// access point
+const char *ssid_st = "Arduino";
+const char *password_st = "fiestaloca";
+WiFiServer station(8015);
 
 //------------------------------------ socket --------------------------------------
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
@@ -268,13 +253,18 @@ void setup()
     Serial.print(sensor.resolution);
     Serial.println(F("%"));
     Serial.println(F("------------------------------------"));
-    // wifi
+    // wifi station
     if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS))
     {
         Serial.println("STA Failed to configure");
     }
+    // station
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
+    // access p.
+    // WiFi.mode(WIFI_AP);
+    // WiFi.softAP(ssid_st, password_st);
+
     if (WiFi.waitForConnectResult() != WL_CONNECTED)
     {
         Serial.printf("WiFi Failed!\n");
