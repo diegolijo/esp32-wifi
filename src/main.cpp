@@ -6,6 +6,7 @@
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <Stepper.h>
 
 #define DHTVCC 19
 #define DHTGND 5
@@ -31,12 +32,17 @@
 #define ENC_A 22
 #define ENC_B 21
 
+#define IN1 12
+#define IN2 14
+#define IN3 27
+#define IN4 26
+
 int encoder0Pos = 0;
 
 DHT_Unified dht(DHTPIN, DHTTYPE);
 
 // wifi
-IPAddress local_IP(192, 168, 1, 128); // Set your Static IP address
+IPAddress local_IP(192, 168, 1, 200); // Set your Static IP address
 IPAddress gateway(192, 168, 1, 1);    // Set your Gateway IP address
 IPAddress subnet(255, 255, 0, 0);
 IPAddress primaryDNS(8, 8, 8, 8);   // optional
@@ -48,9 +54,11 @@ AsyncWebServer server(8015);
 const char *ssid = "WIFI_JIT";
 const char *password = "1234zxcv";
 // access point
-const char *ssid_st = "Arduino";
+/* const char *ssid_st = "Arduino";
 const char *password_st = "fiestaloca";
-WiFiServer station(8015);
+WiFiServer station(8015); */
+
+Stepper myStepper(200, IN1, IN2, IN3, IN4);
 
 //------------------------------------ socket --------------------------------------
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
@@ -203,7 +211,7 @@ void setup()
     pinMode(ENC_A, INPUT_PULLUP);
     pinMode(ENC_B, INPUT_PULLUP);
     // CAD
-    /*     pinMode(CADVDD, OUTPUT);
+    /*  pinMode(CADVDD, OUTPUT);
         pinMode(CADGND, OUTPUT);
         pinMode(CADIN, INPUT);
         digitalWrite(CADVDD, HIGH);
@@ -298,12 +306,29 @@ void setup()
     server.onNotFound(notFound);
 
     server.begin();
+
+    myStepper.setSpeed(300);
 }
 
 void loop()
 {
+        Serial.println("loop");
     read_switch();
     int value = read_encoder();
     /*     int value = analogRead(CADIN); */
+    switch (value)
+    {
+    case 0:
+        myStepper.step(-100);
+        break;
+    case 1:
+        myStepper.step(0);
+        break;
+    case 2:
+        myStepper.step(100);
+        break;
+    default:
+        break;
+    }
     ledAnalogWrite(2, value);
 }
