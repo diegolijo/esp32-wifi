@@ -11,6 +11,8 @@
 #define LED_R 4
 #define LED_G 2
 #define LED_B 15
+#define MOTOR_A 16
+#define MOTOR_B 17
 #define LEDC_CHANNEL_0 0
 #define LEDC_CHANNEL_1 1
 #define LEDC_CHANNEL_2 2
@@ -91,6 +93,12 @@ void setup()
     ledcAttachPin(LED_B, LEDC_CHANNEL_2);
     resetLeds();
 
+    // MOTOR
+    pinMode(MOTOR_B, OUTPUT);
+    pinMode(MOTOR_A, OUTPUT);
+    digitalWrite(MOTOR_A, LOW);
+    digitalWrite(MOTOR_B, LOW);
+
     //--------------------------- socket -------------------------
 
     initWebSocket(onEvent);
@@ -99,14 +107,29 @@ void setup()
 void loop()
 {
     // Serial.println("loop");
-    for (size_t i = 0; i < 256; i++)
+    /* for (size_t i = 0; i < 256; i++)
     {
         delay(1);
         ledAnalogWrite(j, i);
     }
 
-    ledAnalogWrite(j, 0);
+    ledAnalogWrite(j, 0); */
     j = getLed();
+    if (j == 0)
+    {
+        digitalWrite(MOTOR_A, LOW);
+        digitalWrite(MOTOR_B, LOW);
+    }
+    else if (j == 1)
+    {
+        digitalWrite(MOTOR_A, HIGH);
+        digitalWrite(MOTOR_B, LOW);
+    }
+    else if (j == 2)
+    {
+        digitalWrite(MOTOR_A, HIGH);
+        digitalWrite(MOTOR_B, LOW);
+    }
     // j++;
     /*     if (j > 2)
         {
